@@ -3,7 +3,7 @@ CFLAGS =
 LIBS = -lncurses
 DEBUG = -g
 BIN = termchess
-OBJECTS = $(addprefix obj/, termchess.o)
+OBJECTS = $(addprefix obj/, termchess.o options.o)
 
 VPATH = src/
 
