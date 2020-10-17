@@ -93,19 +93,15 @@ struct SquareRepr {
 
 struct BoardRepr {
   int TURN_SIDE;
-  bool white_castle;
-  bool black_castle;
-  bool white_castle_q;
-  bool black_castle_q;
   struct SquareRepr *king_w;
   struct SquareRepr *king_b;
   struct SquareRepr squares[BOARD_SIZE][BOARD_SIZE];
 };
 
 void win_render(WINDOW *);
-void win_render_piece(struct SquareRepr *);
-void PieceRepr_init(struct PieceRepr *);
-void SquareRepr_set(struct SquareRepr *, int, bool, bool);
+void win_render_piece(struct SquareRepr *square);
+void PieceRepr_init(struct PieceRepr *piece);
+void SquareRepr_set(struct SquareRepr *square, int piece, bool isoccu, bool side);
 
 #include "options.h"
 

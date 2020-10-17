@@ -7,7 +7,9 @@ void TurnOptions_init(struct TurnOptions *opts);
 void TurnOptions_free(struct TurnOptions *opts);
 void TurnOptions_render(struct TurnOptions *options);
 void TurnOptions_addnew(struct TurnOptions *opts, struct SquareRepr *square);
+int wrapper_add_options(struct SquareRepr *self, struct SquareRepr *other);
 
+void TurnOptions_parse_pawn(struct BoardRepr *board, struct SquareRepr *square);
 void TurnOptions_parse_rook(struct BoardRepr *board, struct SquareRepr *square);
 void TurnOptions_parse_diagonal(struct BoardRepr *board, struct SquareRepr *square);
 void TurnOptions_parse_knight(struct BoardRepr *board, struct SquareRepr *square);

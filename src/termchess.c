@@ -25,7 +25,31 @@ int
 check_safety(struct BoardRepr *board, struct SquareRepr *square) {
   /* Worst function ever written */
   /* Check diagonal threats */
+
   int x, y;
+  x = square->x-1;
+
+  /* Check for pawn threats */
+  if (square->piece.side == SIDE_BLACK) {
+    y = square->y-1;
+    if (board->squares[y][x].piece.type == PIECE_PAWN &&
+        board->squares[y][x].piece.side ^ square->piece.side)
+      return 1;
+    x = square->x+1;
+    if (board->squares[y][x].piece.type == PIECE_PAWN &&
+        board->squares[y][x].piece.side ^ square->piece.side)
+      return 1;
+  } else {
+    y = square->y+1;
+    if (board->squares[y][x].piece.type == PIECE_PAWN &&
+        board->squares[y][x].piece.side ^ square->piece.side)
+      return 1;
+    x = square->x+1;
+    if (board->squares[y][x].piece.type == PIECE_PAWN &&
+        board->squares[y][x].piece.side ^ square->piece.side)
+      return 1;
+  }
+
   for (x=square->x+1, y=square->y+1; (x < BOARD_SIZE) && (y < BOARD_SIZE); ++x, ++y) {
     if (board->squares[y][x].isoccu == TRUE) {
       if ((board->squares[y][x].piece.type == PIECE_BISHOP ||
@@ -211,48 +235,7 @@ SquareRepr_parse_options(struct SquareRepr *square) {
 #endif
     switch(square->piece.type) {
       case PIECE_PAWN:
-        if (square->piece.side == SIDE_WHITE) {
-          /* Check move 1 step ahead */
-          if (board.squares[square->y+1][square->x].isoccu == FALSE) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y+1][square->x]);
-            /* Check move 2 steps ahead */
-            if (square->piece.has_moved == FALSE &&
-                board.squares[square->y+2][square->x].isoccu == FALSE) {
-              TurnOptions_addnew(&square->opts, &board.squares[square->y+2][square->x]);
-            }
-          }
-          /* FIXME: indexing to `square->x(-+)1` is unsafe, specifically
-           * when square->x equals to 0 or BOARD_SIZE */
-          /* Check taking the opponents piece */
-          if (board.squares[square->y+1][square->x-1].isoccu == TRUE &&
-              board.squares[square->y+1][square->x-1].piece.side ^ square->piece.side) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y+1][square->x-1]);
-          }
-          if (board.squares[square->y+1][square->x+1].isoccu == TRUE &&
-              board.squares[square->y+1][square->x+1].piece.side ^ square->piece.side) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y+1][square->x+1]);
-          }
-        }
-        else if (square->piece.side == SIDE_BLACK) {
-          /* Check move 1 step ahead */
-          if (board.squares[square->y-1][square->x].isoccu == FALSE) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y-1][square->x]);
-            /* Check move 2 steps ahead */
-            if (square->piece.has_moved == FALSE &&
-                board.squares[square->y-2][square->x].isoccu == FALSE) {
-              TurnOptions_addnew(&square->opts, &board.squares[square->y-2][square->x]);
-            }
-          }
-          /* Check taking the opponents piece */
-          if (board.squares[square->y-1][square->x-1].isoccu == TRUE &&
-              board.squares[square->y-1][square->x-1].piece.side ^ square->piece.side) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y-1][square->x-1]);
-          }
-          if (board.squares[square->y-1][square->x+1].isoccu == TRUE &&
-              board.squares[square->y-1][square->x+1].piece.side ^ square->piece.side) {
-            TurnOptions_addnew(&square->opts, &board.squares[square->y-1][square->x+1]);
-          }
-        }
+        TurnOptions_parse_pawn(&board, square);
         break;
 
       case PIECE_KNIGHT:
@@ -378,10 +361,18 @@ win_activate(WINDOW *win, bool flag) {
 
 void
 board_parse_options() {
-  for (int i=0; i<BOARD_SIZE; ++i) {
-    for (int j=0; j<BOARD_SIZE; ++j) {
+  for (int i=0; i < BOARD_SIZE; ++i) {
+    for (int j=0; j < BOARD_SIZE; ++j) {
       SquareRepr_parse_options(&board.squares[i][j]);
     }
+  }
+}
+
+void
+coords_render(int startx, int starty) {
+  int i;
+  for(i=0; i < BOARD_SIZE; ++i) {
+
   }
 }
 
@@ -389,15 +380,10 @@ void
 board_init() {
   int startx = (COLS  - (BOARD_SIZE*SQUARE_SIZEX)) / 2;
   int starty = (LINES - (BOARD_SIZE*SQUARE_SIZEY)) / 2;
-
   board.TURN_SIDE      = SIDE_WHITE;
-  board.white_castle   = TRUE;
-  board.black_castle   = TRUE;
-  board.white_castle_q = TRUE;
-  board.black_castle_q = TRUE;
 
-  for (int i=0; i<BOARD_SIZE; ++i) {
-    for (int j=0; j<BOARD_SIZE; ++j) {
+  for (int i=0; i < BOARD_SIZE; ++i) {
+    for (int j=0; j < BOARD_SIZE; ++j) {
       board.squares[i][j].win = newwin(SQUARE_SIZEY, SQUARE_SIZEX, starty + (i*SQUARE_SIZEY) - i,
                                     startx + (j*SQUARE_SIZEX) - j);
       SquareRepr_init(&board.squares[i][j], i, j);
@@ -420,6 +406,7 @@ board_render() {
 
 bool
 make_turn() {
+  /* TODO: add check when pawn reaches opponents base */
   bool valid = FALSE;
   if (!FOCUSED_SQUARE) return 1;
   for (int i=0; i<FOCUSED_SQUARE->opts.opt_len; ++i) {
@@ -432,9 +419,6 @@ make_turn() {
     }
   }
   if (valid == FALSE) return 1;
-#ifdef DEBUG
-  printw("T - ");
-#endif
   SquareRepr_set(&board.squares[cord_y][cord_x], FOCUSED_SQUARE->piece.type, TRUE,
                  FOCUSED_SQUARE->piece.side);
   if (FOCUSED_SQUARE->piece.type == PIECE_KING) {
@@ -442,6 +426,30 @@ make_turn() {
       board.king_b = &board.squares[cord_y][cord_x];
     } else {
       board.king_w = &board.squares[cord_y][cord_x];
+    }
+    /* Check for castling */
+    if (abs(FOCUSED_SQUARE->x - cord_x) == 2) {
+      if (FOCUSED_SQUARE->x > cord_x) {
+        SquareRepr_set(&board.squares[cord_y][cord_x+1], PIECE_ROOK,
+                       TRUE, board.squares[cord_y][cord_x].piece.side);
+        SquareRepr_set(&board.squares[cord_y][0], PIECE_NONE, FALSE, SIDE_NONE);
+        board.squares[cord_y][BOARD_SIZE-1].piece.has_moved = TRUE;
+
+        win_clear(board.squares[cord_y][0].win);
+        win_render_piece(&board.squares[cord_y][cord_x+1]);
+        wrefresh(board.squares[cord_y][cord_x+1].win);
+        wrefresh(board.squares[cord_y][0].win);
+      } else if (FOCUSED_SQUARE->x < cord_x) {
+        SquareRepr_set(&board.squares[cord_y][cord_x-1], PIECE_ROOK,
+                       TRUE, board.squares[cord_y][cord_x].piece.side);
+        SquareRepr_set(&board.squares[cord_y][BOARD_SIZE-1], PIECE_NONE, FALSE, SIDE_NONE);
+        board.squares[cord_y][BOARD_SIZE-1].piece.has_moved = TRUE;
+
+        win_clear(board.squares[cord_y][BOARD_SIZE-1].win);
+        win_render_piece(&board.squares[cord_y][cord_x-1]);
+        wrefresh(board.squares[cord_y][cord_x-1].win);
+        wrefresh(board.squares[cord_y][BOARD_SIZE-1].win);
+      }
     }
   }
   SquareRepr_set(FOCUSED_SQUARE, PIECE_NONE, FALSE, SIDE_NONE);
@@ -491,7 +499,8 @@ void SquareRepr_info(struct SquareRepr *square) {
     side = "black";
   }
   struct BoardRepr tmp_board = board;
-  struct SquareRepr *king_square = tmp_board.TURN_SIDE == SIDE_BLACK ? tmp_board.king_b : tmp_board.king_w;
+  struct SquareRepr *king_square = tmp_board.TURN_SIDE == SIDE_BLACK ? \
+                                   tmp_board.king_b : tmp_board.king_w;
   SquareRepr_set(&tmp_board.squares[square->y][square->x], king_square->piece.type, TRUE,
                  board.TURN_SIDE);
   SquareRepr_set(&tmp_board.squares[king_square->y][king_square->x], PIECE_NONE, FALSE, SIDE_NONE);
@@ -501,8 +510,9 @@ void SquareRepr_info(struct SquareRepr *square) {
 
   move(LINES-3, 1);
   clrtobot();
-  mvprintw(LINES-3, 1, "{side: %s; piece: %s; x: %d; y: %d; issafe: %s; options(%d): { ",
-           side, type, square->x, square->y, safe ? "true" : "false", square->opts.opt_len);
+  mvprintw(LINES-3, 1, "{side: %s; piece: %s; x: %d; y: %d; isoccu: %d; has_moved: %d; issafe: %s; "
+           "options(%d): { ", side, type, square->x, square->y, square->isoccu,
+           square->piece.has_moved, safe ? "true" : "false", square->opts.opt_len);
 
   for (int i=0; i<square->opts.opt_len; ++i) {
     if (square->opts.opt[i])

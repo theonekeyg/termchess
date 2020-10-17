@@ -35,215 +35,211 @@ TurnOptions_addnew(struct TurnOptions *opts, struct SquareRepr *square) {
   }
 }
 
+int
+wrapper_add_options(struct SquareRepr *self, struct SquareRepr *other) {
+  if (other->isoccu == TRUE) {
+    if (other->piece.side ^ self->piece.side) {
+      TurnOptions_addnew(&self->opts, other);
+    }
+    return 1;
+  }
+  TurnOptions_addnew(&self->opts, other);
+  return 0;
+}
+
 void
-TurnOptions_parse_rook(struct BoardRepr *board, struct SquareRepr *square) {
-  for (int x=square->x+1; x < BOARD_SIZE; ++x) {
-    if (board->squares[square->y][x].isoccu == TRUE) {
-      if (board->squares[square->y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[square->y][x]);
+TurnOptions_parse_pawn(struct BoardRepr *board,
+                       struct SquareRepr *square) {
+  if (square->piece.side == SIDE_WHITE) {
+    /* Check move 1 step ahead */
+    if (board->squares[square->y+1][square->x].isoccu == FALSE) {
+      TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x]);
+      /* Check move 2 steps ahead */
+      if (square->piece.has_moved == FALSE &&
+          board->squares[square->y+2][square->x].isoccu == FALSE) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y+2][square->x]);
       }
-      break;
     }
-    TurnOptions_addnew(&square->opts, &board->squares[square->y][x]);
+    /* Check taking the opponents piece */
+    if (square->x-1 >= 0) {
+      if (board->squares[square->y+1][square->x-1].isoccu == TRUE &&
+          board->squares[square->y+1][square->x-1].piece.side ^ square->piece.side) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x-1]);
+      }
+    }
+    if (square->x+1 < BOARD_SIZE) {
+      if (board->squares[square->y+1][square->x+1].isoccu == TRUE &&
+          board->squares[square->y+1][square->x+1].piece.side ^ square->piece.side) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x+1]);
+      }
+    }
+
   }
-  for (int x=square->x-1; x >= 0; --x) {
-    if (board->squares[square->y][x].isoccu == TRUE) {
-      if (board->squares[square->y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[square->y][x]);
+  else if (square->piece.side == SIDE_BLACK) {
+    /* Check move 1 step ahead */
+    if (board->squares[square->y-1][square->x].isoccu == FALSE) {
+      TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x]);
+      /* Check move 2 steps ahead */
+      if (square->piece.has_moved == FALSE &&
+          board->squares[square->y-2][square->x].isoccu == FALSE) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y-2][square->x]);
       }
-      break;
     }
-    TurnOptions_addnew(&square->opts, &board->squares[square->y][x]);
-  }
-  for (int y=square->y+1; y < BOARD_SIZE; ++y) {
-    if (board->squares[y][square->x].isoccu == TRUE) {
-      if (board->squares[y][square->x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][square->x]);
+    /* Check taking the opponents piece */
+    if (square->x-1 >= 0) {
+      if (board->squares[square->y-1][square->x-1].isoccu == TRUE &&
+          board->squares[square->y-1][square->x-1].piece.side ^ square->piece.side) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x-1]);
       }
-      break;
     }
-    TurnOptions_addnew(&square->opts, &board->squares[y][square->x]);
-  }
-  for (int y=square->y-1; y >= 0; --y) {
-    if (board->squares[y][square->x].isoccu == TRUE) {
-      if (board->squares[y][square->x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][square->x]);
+    if (square->x+1 < BOARD_SIZE) {
+      if (board->squares[square->y-1][square->x+1].isoccu == TRUE &&
+          board->squares[square->y-1][square->x+1].piece.side ^ square->piece.side) {
+        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x+1]);
       }
-      break;
     }
-    TurnOptions_addnew(&square->opts, &board->squares[y][square->x]);
   }
 }
 
 void
-TurnOptions_parse_diagonal(struct BoardRepr *board, struct SquareRepr *square) {
+TurnOptions_parse_rook(struct BoardRepr *board,
+                       struct SquareRepr *square) {
+  int x, y;
+  y = square->y;
+  for (x=square->x+1; x < BOARD_SIZE; ++x) {
+    if (wrapper_add_options(square, &board->squares[y][x]))
+      break;
+  }
+  for (x=square->x-1; x >= 0; --x) {
+    if (wrapper_add_options(square, &board->squares[y][x]))
+      break;
+  }
+  x = square->x;
+  for (y=square->y+1; y < BOARD_SIZE; ++y) {
+    if (wrapper_add_options(square, &board->squares[y][x]))
+      break;
+  }
+  for (y=square->y-1; y >= 0; --y) {
+    if (wrapper_add_options(square, &board->squares[y][x]))
+      break;
+  }
+}
+
+void
+TurnOptions_parse_diagonal(struct BoardRepr *board,
+                           struct SquareRepr *square) {
   int x, y;
   for (x=square->x+1, y=square->y+1; (x < BOARD_SIZE) && (y < BOARD_SIZE); ++x, ++y) {
-    if (board->squares[y][x].isoccu == TRUE) {
-      if (board->squares[y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      }
+    if (wrapper_add_options(square, &board->squares[y][x]))
       break;
-    }
-    TurnOptions_addnew(&square->opts, &board->squares[y][x]);
   }
   for (x=square->x-1, y=square->y+1; (x >= 0) && (y < BOARD_SIZE); --x, ++y) {
-    if (board->squares[y][x].isoccu == TRUE) {
-      if (board->squares[y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      }
+    if (wrapper_add_options(square, &board->squares[y][x]))
       break;
-    }
-    TurnOptions_addnew(&square->opts, &board->squares[y][x]);
   }
   for (x=square->x+1, y=square->y-1; (x < BOARD_SIZE) && (y >= 0); ++x, --y) {
-    if (board->squares[y][x].isoccu == TRUE) {
-      if (board->squares[y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      }
+    if (wrapper_add_options(square, &board->squares[y][x]))
       break;
-    }
-    TurnOptions_addnew(&square->opts, &board->squares[y][x]);
   }
   for (x=square->x-1, y=square->y-1; (x >= 0) && (y >= 0); --x, --y) {
-    if (board->squares[y][x].isoccu == TRUE) {
-      if (board->squares[y][x].piece.side ^ square->piece.side) {
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      }
+    if (wrapper_add_options(square, &board->squares[y][x]))
       break;
-    }
-    TurnOptions_addnew(&square->opts, &board->squares[y][x]);
   }
 }
 
 void
-TurnOptions_parse_knight(struct BoardRepr *board, struct SquareRepr *square) {
+TurnOptions_parse_knight(struct BoardRepr *board,
+                         struct SquareRepr *square) {
   int x, y;
   x = square->x+2;
   if (x < BOARD_SIZE) {
     y = square->y-1;
-    if (y >= 0) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (y >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+
     y = square->y+1;
-    if (y < BOARD_SIZE) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (y < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
   x = square->x-2;
   if (x >= 0) {
     y = square->y-1;
-    if (y >= 0) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (y >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+
     y = square->y+1;
-    if (y < BOARD_SIZE) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (y < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
   y = square->y+2;
   if (y < BOARD_SIZE) {
     x = square->x-1;
-    if (x >= 0) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (x >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+
     x = square->x+1;
-    if (x < BOARD_SIZE) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (x < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
   y = square->y-2;
   if (y >= 0) {
     x = square->x-1;
-    if (x >= 0) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (x >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+
     x = square->x+1;
-    if (x < BOARD_SIZE) {
-      if (board->squares[y][x].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-      else if (board->squares[y][x].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[y][x]);
-    }
+    if (x < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
 }
 
 void 
-TurnOptions_parse_king(struct BoardRepr *board, struct SquareRepr *square) {
-  /* TODO: add castling rights */
-  if (square->x-1 >= 0) { /* Check for turning down */
-    if (board->squares[square->y][square->x-1].isoccu == FALSE) /* Straight down */
-      TurnOptions_addnew(&square->opts, &board->squares[square->y][square->x-1]);
-    else if (board->squares[square->y][square->x-1].piece.side ^ square->piece.side)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y][square->x-1]);
-    if (square->y-1 >= 0) {
-      if (board->squares[square->y-1][square->x-1].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x-1]);
-      else if (board->squares[square->y-1][square->x-1].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x-1]);
+TurnOptions_parse_king(struct BoardRepr *board,
+                       struct SquareRepr *square) {
+  int x, y;
+  y = square->y;
+  /* Castling rights */
+  if (square->piece.has_moved == FALSE) {
+    for (x=square->x-1; x > 0; --x) {
+      if (board->squares[y][x].isoccu == TRUE)
+        break;
     }
-    if (square->y+1 < BOARD_SIZE) {
-      if (board->squares[square->y+1][square->x-1].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x-1]);
-      else if (board->squares[square->y+1][square->x-1].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x-1]);
+    if (x == 0) {
+      if (board->squares[y][x].piece.has_moved == FALSE)
+        TurnOptions_addnew(&square->opts, &board->squares[y][square->x-2]);
+    }
+
+    for (x=square->x+1; x < BOARD_SIZE-1; ++x) {
+      if (board->squares[y][x].isoccu == TRUE)
+        break;
+    }
+    if (x == BOARD_SIZE-1) {
+      if (board->squares[y][x].piece.has_moved == FALSE)
+        TurnOptions_addnew(&square->opts, &board->squares[y][square->x+2]);
     }
   }
 
-  if (square->x+1 < BOARD_SIZE) {
-    if (board->squares[square->y][square->x+1].isoccu == FALSE)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y][square->x+1]);
-    else if (board->squares[square->y][square->x+1].piece.side ^ square->piece.side)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y][square->x+1]);
-    if (square->y-1 >= 0) {
-      if (board->squares[square->y-1][square->x+1].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x+1]);
-      else if (board->squares[square->y-1][square->x+1].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x+1]);
-    }
-    if (square->y+1 < BOARD_SIZE) {
-      if (board->squares[square->y+1][square->x+1].isoccu == FALSE)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x+1]);
-      else if (board->squares[square->y+1][square->x+1].piece.side ^ square->piece.side)
-        TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x+1]);
-    }
+  y = square->y;
+  if ((x = square->x-1) >= 0) {
+    wrapper_add_options(square, &board->squares[y][x]);
+    if ((y = square->y-1) >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+    if ((y = square->y+1) < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
 
-  /* FIXME: These checks could be replaced by checks above, but that would result in code duplication,
-   * since they would have to be checked in both `square->x-1` and `square->x+1`, need to 
-   * check if code duplication cost is worth it in terms of performance gain from removing
-   * unnecessary checks */
-  if (square->y-1 >= 0) {
-    if (board->squares[square->y-1][square->x].isoccu == FALSE)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x]);
-    else if (board->squares[square->y-1][square->x].piece.side ^ square->piece.side)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y-1][square->x]);
+  y = square->y;
+  if ((x = square->x+1) < BOARD_SIZE) {
+    wrapper_add_options(square, &board->squares[y][x]);
+    if ((y = square->y-1) >= 0)
+      wrapper_add_options(square, &board->squares[y][x]);
+    if ((y = square->y+1) < BOARD_SIZE)
+      wrapper_add_options(square, &board->squares[y][x]);
   }
-  if (square->y+1 < BOARD_SIZE) {
-    if (board->squares[square->y+1][square->x].isoccu == FALSE)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x]);
-    else if (board->squares[square->y+1][square->x].piece.side ^ square->piece.side)
-      TurnOptions_addnew(&square->opts, &board->squares[square->y+1][square->x]);
-  }
+
+  x = square->x;
+  if ((y = square->y-1) >= 0)
+    wrapper_add_options(square, &board->squares[y][x]);
+  if ((y = square->y+1) < BOARD_SIZE)
+    wrapper_add_options(square, &board->squares[y][x]);
 }
