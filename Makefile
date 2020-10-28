@@ -1,7 +1,7 @@
 CC = /usr/bin/gcc
 CFLAGS = 
 LIBS = -lncurses
-DEBUG = -g
+DEBUG = -g -O0
 BIN = termchess
 OBJECTS = $(addprefix obj/, termchess.o options.o)
 
