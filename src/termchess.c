@@ -1,4 +1,5 @@
 #include "termchess.h"
+#include "options.h"
 
 void
 FOCUSED_SQUARE_init(struct SquareRepr *square) {

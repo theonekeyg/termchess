@@ -103,6 +103,4 @@ void win_render_piece(struct SquareRepr *square);
 void PieceRepr_init(struct PieceRepr *piece);
 void SquareRepr_set(struct SquareRepr *square, int piece, bool isoccu, bool side);
 
-#include "options.h"
-
 #endif // _H_TERMCHESS
